@@ -4,8 +4,6 @@ import { ConnectionHandler, ConnectionMap, MessageType, serialize } from "./prot
 const EXPOSE_PORT = 8199
 const REMOTE_PORT = 8198
 
-const auth = "53c4b0ea24158fa16066817775d73413"
-
 let remoteSocket = null
 
 const connectionMap = new ConnectionMap()
@@ -80,7 +78,7 @@ const remoteServer = net.createServer((socket) => {
         switch (packet.type) {
             case MessageType.AUTH: // AUTHENTICATE
                 const receivedToken = buf2hex(packet.authToken)
-                if (receivedToken === auth) {
+                if (receivedToken === process.env.AUTH_TOKEN) {
                     authenticated = true;
                     clearTimeout(authTimeout);
                     console.log("Client authenticated successfully.");

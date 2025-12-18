@@ -1,9 +1,7 @@
 import net from "node:net";
 import { ConnectionHandler, ConnectionMap, MessageType, serialize } from "./protocol.js";
 
-const REMOTE_SERVER = "ctf.b01lers.com"
 const REMOTE_PORT = 8198
-const auth = "53c4b0ea24158fa16066817775d73413"
 
 let port;
 
@@ -62,11 +60,12 @@ const remoteClient = new ReconnectingSocket({
     }
 });
 
-remoteClient.connect(REMOTE_PORT, REMOTE_SERVER, () => {
-    console.log(`Connected to server at ${REMOTE_SERVER}:${REMOTE_PORT}`);
+remoteClient.connect(REMOTE_PORT, process.env.REMOTE_HOST, () => {
+    console.log(`Connected to server at ${process.env.REMOTE_HOST}:${REMOTE_PORT}`);
     connectionMap.clear();
+
     // Send authentication token
-    const authBuffer = Buffer.from(auth, 'hex');
+    const authBuffer = Buffer.from(process.env.AUTH_TOKEN, 'hex');
     const authPacket = serialize({
         type: MessageType.AUTH,
         authToken: authBuffer
