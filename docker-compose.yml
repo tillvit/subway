@@ -1,0 +1,11 @@
+version: "3.7"
+services:
+  subway:
+    container_name: subway
+    build:
+      dockerfile: ./Dockerfile
+      context: .
+    ports:
+      - "8198:8198"
+      - "8199:8199"
+    restart: always
