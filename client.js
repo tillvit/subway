@@ -104,6 +104,7 @@ function onPacket(packet) {
           type: MessageType.CLOSE_CONNECTION,
           mapId: packet.mapId
         });
+        console.log(`Local connection closed for mapId ${packet.mapId}`);
         remoteClient.write(closeMessage);
       });
       clientSocket.on('error', (err) => {
@@ -134,3 +135,7 @@ function onPacket(packet) {
   }
 }
 
+setInterval(() => {
+  console.log(parser.buffer.length)
+  console.log(parser.buffer.read(parser.buffer.length))
+}, 1000);

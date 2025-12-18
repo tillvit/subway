@@ -36,6 +36,7 @@ const exposeServer = net.createServer((socket) => {
       type: MessageType.CLOSE_CONNECTION,
       mapId: mapId
     }))
+    console.log(`Expose client disconnected for mapId ${mapId}`)
   })
 
   socket.on("data", (data) => {
@@ -71,8 +72,12 @@ const remoteServer = net.createServer((socket) => {
 
   const parser = new ConnectionHandler(onPacket)
 
+  const parserDebugInterval = setInterval(() => {
+    console.log(parser.buffer.length)
+    console.log(parser.buffer.read(parser.buffer.length))
+  }, 1000);
+
   function onPacket(packet) {
-    console.log(packet)
     switch (packet.type) {
       case MessageType.AUTH: // AUTHENTICATE
         const receivedToken = buf2hex(packet.authToken)
@@ -115,6 +120,7 @@ const remoteServer = net.createServer((socket) => {
       connectionMap.clear()
       console.warn(`Remote socket disconnected.`)
     }
+    clearInterval(parserDebugInterval);
   })
 })
 

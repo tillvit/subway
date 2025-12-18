@@ -22,6 +22,34 @@ const readShort = (bytes) => {
   return (bytes[0] << 8) | bytes[1]
 }
 
+class Lock {
+  acquired = false;
+  queue = [];
+
+  async acquire() {
+    if (!this.acquired) {
+      this.acquired = true;
+    } else {
+      return new Promise((resolve, _) => {
+        this.queue.push(resolve);
+      });
+    }
+  }
+
+  async release() {
+    if (this.queue.length === 0 && this.acquired) {
+      this.acquired = false;
+      return;
+    }
+
+    const continuation = this.queue.shift();
+    return new Promise((res) => {
+      continuation();
+      res();
+    });
+  }
+}
+
 export class RingBuffer {
   constructor(size) {
     this.buffer = Buffer.alloc(size)
@@ -38,12 +66,11 @@ export class RingBuffer {
     }
   }
 
-  push(data) {
+  async push(data) {
     for (let i = 0; i < data.length; i++) {
       this.buffer[this.end] = data[i]
       this.end = (this.end + 1) % this.size
     }
-    console.log(this.start, this.end, this.length)
   }
 
   read(length) {
@@ -95,61 +122,66 @@ export class ConnectionHandler {
   constructor(onPacket) {
     this.buffer = new RingBuffer(1048576)
     this.onPacket = onPacket
+    this.lock = new Lock()
   }
 
   reset() {
     this.buffer.clear()
   }
 
-  push(data) {
+  async push(data) {
+    await this.lock.acquire();
     this.buffer.push(data)
-    this.parse()
+    this._parse()
+    this.lock.release();
   }
 
-  parse() {
-    const messageType = this.buffer.read(1)[0]
-    switch (messageType) {
-      case MessageType.AUTH: {
-        const AUTH_TOKEN_LENGTH = 16
-        if (this.buffer.length < 1 + AUTH_TOKEN_LENGTH) {
-          return
+  _parse() {
+    while (this.buffer.length > 0) {
+      const messageType = this.buffer.read(1)[0]
+      switch (messageType) {
+        case MessageType.AUTH: {
+          const AUTH_TOKEN_LENGTH = 16
+          if (this.buffer.length < 1 + AUTH_TOKEN_LENGTH) {
+            return
+          }
+          const authToken = this.buffer.readRange(1, 1 + AUTH_TOKEN_LENGTH)
+          this.onPacket?.({ type: MessageType.AUTH, authToken })
+          this.buffer.removeStart(1 + AUTH_TOKEN_LENGTH)
+          break
         }
-        const authToken = this.buffer.readRange(1, 1 + AUTH_TOKEN_LENGTH)
-        this.onPacket?.({ type: MessageType.AUTH, authToken })
-        this.buffer.removeStart(1 + AUTH_TOKEN_LENGTH)
-        break
-      }
-      case MessageType.CREATE_CONNECTION: {
-        if (this.buffer.length < 3) {
-          return
+        case MessageType.CREATE_CONNECTION: {
+          if (this.buffer.length < 3) {
+            return
+          }
+          const mapId = readShort(this.buffer.readRange(1, 3))
+          this.onPacket?.({ type: MessageType.CREATE_CONNECTION, mapId })
+          this.buffer.removeStart(3)
+          break
         }
-        const mapId = readShort(this.buffer.readRange(1, 3))
-        this.onPacket?.({ type: MessageType.CREATE_CONNECTION, mapId })
-        this.buffer.removeStart(3)
-        break
-      }
-      case MessageType.CLOSE_CONNECTION: {
-        if (this.buffer.length < 3) {
-          return
+        case MessageType.CLOSE_CONNECTION: {
+          if (this.buffer.length < 3) {
+            return
+          }
+          const mapId = readShort(this.buffer.readRange(1, 3))
+          this.onPacket?.({ type: MessageType.CLOSE_CONNECTION, mapId })
+          this.buffer.removeStart(3)
+          break
         }
-        const mapId = readShort(this.buffer.readRange(1, 3))
-        this.onPacket?.({ type: MessageType.CLOSE_CONNECTION, mapId })
-        this.buffer.removeStart(3)
-        break
-      }
-      case MessageType.DATA: {
-        if (this.buffer.length < 3) {
-          return
+        case MessageType.DATA: {
+          if (this.buffer.length < 3) {
+            return
+          }
+          const mapId = readShort(this.buffer.readRange(1, 3))
+          let { value: length, length: lengthBytes } = this.buffer.readULEB128(3)
+          if (this.buffer.length < 3 + lengthBytes + length) {
+            return
+          }
+          const payload = Buffer.from(this.buffer.readRange(3 + lengthBytes, 3 + lengthBytes + length))
+          this.onPacket?.({ type: MessageType.DATA, mapId, payload })
+          this.buffer.removeStart(3 + lengthBytes + length)
+          break
         }
-        const mapId = readShort(this.buffer.readRange(1, 3))
-        let { value: length, length: lengthBytes } = this.buffer.readULEB128(3)
-        if (this.buffer.length < 3 + lengthBytes + length) {
-          return
-        }
-        const payload = Buffer.from(this.buffer.readRange(3 + lengthBytes, 3 + lengthBytes + length))
-        this.onPacket?.({ type: MessageType.DATA, mapId, payload })
-        this.buffer.removeStart(3 + lengthBytes + length)
-        break
       }
     }
   }
