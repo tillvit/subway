@@ -2,6 +2,7 @@ import net from "node:net";
 import { ConnectionHandler, ConnectionMap, MessageType, serialize } from "./protocol.js";
 
 const REMOTE_PORT = 8198
+const DEBUG = process.env.DEBUG === "true";
 
 let port;
 
@@ -78,7 +79,7 @@ remoteClient.on("data", (data) => {
 })
 
 function onPacket(packet) {
-    console.log(packet)
+    if (DEBUG) console.log(packet)
     switch (packet.type) {
         case MessageType.CREATE_CONNECTION: {
             const clientSocket = new net.Socket();
@@ -86,7 +87,7 @@ function onPacket(packet) {
                 console.log(`Connected to local service on port ${port} for mapId ${packet.mapId}`);
             });
             clientSocket.on('data', (chunk) => {
-                console.log("Local data", chunk)
+                if (DEBUG) console.log("Local data", chunk)
                 const message = serialize({
                     type: MessageType.DATA,
                     mapId: packet.mapId,
@@ -131,7 +132,9 @@ function onPacket(packet) {
     }
 }
 
-setInterval(() => {
-    console.log(parser.buffer.length)
-    console.log(parser.buffer.read(parser.buffer.length))
-}, 1000);
+if (DEBUG) {
+    setInterval(() => {
+        console.log(parser.buffer.length)
+        console.log(parser.buffer.read(parser.buffer.length))
+    }, 1000)
+}

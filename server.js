@@ -111,12 +111,24 @@ const remoteServer = net.createServer((socket) => {
         void parser.push(data);
     })
 
+    socket.on("error", (err) => {
+        console.error("Remote socket error:", err)
+        if (socket === remoteSocket) {
+            remoteSocket = null;
+            connectionMap.clear();
+            console.warn(`Remote socket disconnected due to error.`);
+        }
+        socket.destroy()
+        clearInterval(parserDebugInterval);
+    })
+
     socket.on("close", () => {
         if (socket === remoteSocket) {
             remoteSocket = null;
             connectionMap.clear();
             console.warn(`Remote socket disconnected.`);
         }
+        socket.destroy()
         clearInterval(parserDebugInterval);
     })
 })
