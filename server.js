@@ -16,6 +16,7 @@ function buf2hex(buffer) {
 
 const exposeServer = net.createServer((socket) => {
     if (!remoteSocket) {
+        console.warn("No remote socket connected. Closing expose connection.")
         socket.destroy()
         return
     }
@@ -102,6 +103,7 @@ const remoteServer = net.createServer((socket) => {
                     console.warn("Received data before authentication. Ignoring.")
                     socket.destroy()
                 }
+                clearInterval(parserDebugInterval)
                 connectionMap.close(packet.mapId)
                 break
         }
