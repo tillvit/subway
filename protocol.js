@@ -99,6 +99,9 @@ export class RingBuffer {
         let bytesRead = 0
 
         do {
+            if (bytesRead + offset >= this.length) {
+                return {value: null, length: 0}
+            }
             byte = this.buffer[(this.start + offset + bytesRead) % this.size]
             result |= (byte & 0x7F) << shift
             shift += 7
@@ -174,7 +177,7 @@ export class ConnectionHandler {
                     }
                     const mapId = readShort(this.buffer.readRange(1, 3))
                     let {value: length, length: lengthBytes} = this.buffer.readULEB128(3)
-                    if (this.buffer.length < 3 + lengthBytes + length) {
+                    if (length == null || this.buffer.length < 3 + lengthBytes + length) {
                         return
                     }
                     const payload = Buffer.from(this.buffer.readRange(3 + lengthBytes, 3 + lengthBytes + length))
