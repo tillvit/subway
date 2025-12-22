@@ -82,6 +82,7 @@ const remoteClient = new ReconnectingSocket({
 remoteClient.connect(REMOTE_PORT, process.env.REMOTE_HOST, () => {
     console.log(`Connected to server at ${process.env.REMOTE_HOST}:${REMOTE_PORT}`);
     connectionMap.clear();
+    totalStats.startTime = Date.now();
 
     // Send authentication token
     const authBuffer = Buffer.from(process.env.AUTH_TOKEN, 'hex');
