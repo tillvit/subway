@@ -3,5 +3,8 @@
   "scripts": {
     "server": "node --env-file=.env server.js",
     "client": "node --env-file=.env client.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

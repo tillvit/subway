@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap&family=Geist:wght@100..900" rel="stylesheet">
+
+    <title>subway surfer stats</title>
+    <style>
+        * {
+            font-family: 'Manrope', Arial, sans-serif;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            interpolate-size: allow-keywords;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+        }
+        body.online * {
+            --tint-color: 188, 232, 255;
+        }
+        body.disconnected * {
+            --tint-color: 255, 178, 178;
+        }
+        body.offline * {
+            --tint-color: 255, 255, 255;
+        }
+        .stat h3 {
+            font-weight: 100;
+            opacity: 0.8;
+        }
+        .stat span {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        h4 {
+            font-size: 0.7rem;
+            color: rgba(var(--tint-color));
+        }
+        h3 {
+            font-size: 0.8rem;
+            color: rgba(var(--tint-color));
+        }
+        #totals {
+            display: flex;
+            gap: 25px;
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        #totals .stat {
+            width: 120px;
+        }
+        body {
+            color: white;
+            width: 100%;
+            height: 100vh;
+        }
+        #jumbo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 100px 20px 50px 20px;
+        }
+        #status {
+            font-family: 'Geist', sans-serif;
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-weight: 800;
+            text-shadow: 0px 0px 15px rgba(var(--tint-color), 0.4);
+        }
+        #scroll {
+            width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        #connections {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px 20px 0px 20px;
+            perspective: 1000px;
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(0, 0, 0, 0.3),
+                rgba(0, 0, 0, 0.3) 10px,
+                rgba(0, 0, 0, 0.35) 10px,
+                rgba(0, 0, 0, 0.35) 20px
+            );
+            border-image-slice: 1;
+            border-width: 5px;
+            border-top: 1px solid;
+            border-image-source: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.6) 30% , rgba(255,255,255,0.6) 70%, rgba(255,255,255,0));
+            flex: 1;
+        }
+
+        .connection-entry {
+            padding: 15px 20px;
+            position: relative;
+            background-color: rgba(var(--tint-color), 0.02);
+            border: 1px rgba(var(--tint-color), 0.5) solid;
+            border-radius: 10px;
+            animation: entry-enter 0.5s cubic-bezier(.12,.94,.28,.94) forwards;
+            transition: 0.5s cubic-bezier(.12,.94,.28,.94);
+            overflow: hidden;
+            box-shadow: 0px 4px 5px rgba(0,0,0, 0.3);
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .blur-container {
+            display: flex;
+            flex-direction: row;
+            justify-self: flex-start;
+            gap: 25px;
+            align-items: center;
+            filter: blur(calc(var(--blur-amount) * 10px));
+        }
+
+        .connection-entry.exit {
+            animation: entry-exit 0.5s cubic-bezier(.12,.94,.28,.94) forwards;
+        }
+
+        .connection-entry:hover {
+            background-color: color-mix(in srgb, rgba(var(--tint-color), 0.1) calc(100% - var(--blur-amount) * 100%), rgba(255, 0, 0, 0.2) calc(var(--blur-amount) * 100%));
+            border: 1px solid color-mix(in srgb, rgba(var(--tint-color), 0.5) calc(100% - var(--blur-amount) * 100%), rgba(255, 0, 0, 0.5) calc(var(--blur-amount) * 100%));
+            box-shadow: 0px 4px 8px color-mix(in srgb, rgba(0, 0, 0, 0.5) calc(100% - var(--blur-amount) * 100%), rgba(113, 0, 0, 0.5) calc(var(--blur-amount) * 100%));
+        }
+
+        .connection-entry:active {
+            scale: 0.98;
+        }
+
+        @keyframes entry-enter {
+            0% {
+                height: 0;
+                opacity: 0;
+                padding: 0px 20px;
+            }
+            100% {
+                height: calc-size(max-content, size);
+                opacity: 1;
+                padding: 15px 20px;
+            }
+        }
+
+        @keyframes entry-exit {
+            0% {
+                height: calc-size(max-content, size);
+                opacity: 1;
+                transform: scale(1);
+                padding: 15px 20px;
+            }
+            100% {
+                height: 0px;
+                opacity: 0;
+                transform: scale(0.8);
+                padding: 0px 20px;
+                margin-bottom: -15px;
+            }
+        }
+
+        .connection-entry .map-id {
+            position: absolute;
+            font-size: 4.5rem;
+            font-weight: 900;
+            left: 0px;
+            top: 50%;
+            opacity: 0.08;
+            transform: translate(0%, -50%);
+            filter: blur(1px);
+            letter-spacing: -5px;
+        }
+
+        .disconnect-overlay {
+            position: absolute;
+            font-size: 4.5rem;
+            font-weight: 900;
+            left: 50%;
+            top: 50%;
+            color: rgb(251, 157, 157);
+            opacity: calc(var(--blur-amount) * 0.3);
+            transform: translate(-50%, -50%) scale(calc(1.1 - var(--blur-amount) * 0.2));
+            filter: blur(1px);
+        }
+
+        .connection-entry h4 {
+            flex: 1;
+        }
+        .connection-entry .stat {
+            flex: 1;
+            width: 60px;
+        }
+        .connection-entry .uptime .stat {
+            width: 120px;
+        }
+        .connection-entry .uptime h3 {
+            font-size: 0.7rem;
+            font-weight: 700;
+            opacity: 1;
+        }
+        .connection-entry h3 {
+            font-size: 0.5rem;
+        }
+        .connection-entry span {
+            font-size: 0.9rem;
+        }
+        .inbound-stats, .outbound-stats {
+            display: flex;
+            flex-direction: row;
+            gap: 5px;
+        }
+        .stat-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body class="offline">
+    <div id="scroll">
+        <div id="jumbo">
+            <div id="status">Offline</div>
+            <div id="totals">
+                <div class="stat">
+                    <h3>Uptime: </h3>
+                    <span id="uptime">-</span>
+                </div>
+                <div class="stat">
+                    <h3>Total Connections: </h3>
+                    <span id="totalConnections">-</span>
+                </div>
+                <div class="stat">
+                    <h3>Active Connections: </h3>
+                    <span id="activeConnections">-</span>
+                </div>
+                <div class="stat">
+                    <h3>Inbound Data: </h3>
+                    <span id="totalDataInbound">-</span>
+                </div>
+                <div class="stat">
+                    <h3>Outbound Data: </h3>
+                    <span id="totalDataOutbound">-</span>
+                </div>
+            </div>
+        </div>
+        <div id="sep"></div>
+        <div id="connections"></div>
+    </div>
+    <script>
+
+        const bgColors = {
+            offline: [[12, 11, 12], [28, 28, 29]],
+            disconnected: [[21, 10, 10], [46, 10, 12]],
+            online: [[11, 10, 21], [12, 10, 46]],
+        };
+        const currentBGColors = [[0, 0, 0], [0, 0, 0]];
+
+        function updateBG() {
+            const bodyClass = document.body.className;
+            const targetColors = bgColors[bodyClass];
+            for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < 3; j++) {
+                    currentBGColors[i][j] += (targetColors[i][j] - currentBGColors[i][j]) * 0.05;
+                }
+            }
+            document.body.style.background = `linear-gradient(to bottom, rgb(${currentBGColors[0].map(c => Math.round(c)).join(', ')}), rgb(${currentBGColors[1].map(c => Math.round(c)).join(', ')}) 100%)`;
+            requestAnimationFrame(updateBG);
+        }
+        updateBG();
+
+        const connectionsDiv = document.getElementById('connections');
+
+        function formatBytes(bytes) {
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            if (bytes === 0) return '0 B';
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+            return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+        }
+
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hrs}h ${mins}m ${secs}s`;
+        }
+
+        function formatBigNumber(num) {
+            if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+            return num.toString();
+        }
+
+        function createStatElement(title, value) {
+            const statDiv = document.createElement('div');
+            statDiv.className = 'stat';
+            const h3 = document.createElement('h3');
+            h3.innerText = title;
+            const span = document.createElement('span');
+            span.innerText = value;
+            statDiv.dataset.title = title;
+            statDiv.appendChild(h3);
+            statDiv.appendChild(span);
+            return statDiv;
+        }
+
+        function updateConnection(mapId, data) {
+            let entryDiv = document.querySelector(`.connection-entry[data-id="${mapId}"]`);
+            if (!entryDiv) {
+                entryDiv = document.createElement('div');
+                entryDiv.className = 'connection-entry';
+                entryDiv.dataset.id = mapId;
+                connectionsDiv.insertBefore(entryDiv, connectionsDiv.firstChild);
+
+                const blurContainer = document.createElement('div');
+                blurContainer.className = 'blur-container';
+
+                const mapIdElement = document.createElement('h4');
+                mapIdElement.className = 'map-id';
+                mapIdElement.innerText = `${mapId}`;
+
+                const uptimeContainer = document.createElement('div');
+                uptimeContainer.className = 'uptime';
+                uptimeContainer.appendChild(createStatElement('Uptime', ""));
+
+                const inboundDiv = document.createElement('div');
+                inboundDiv.className = 'stat-container';
+                const inboundTitle = document.createElement('h4');
+                inboundTitle.innerText = 'Inbound';
+                const inboundStats = document.createElement('div');
+                inboundStats.className = 'inbound-stats';
+                const outboundDiv = document.createElement('div');
+                outboundDiv.className = 'stat-container';
+                const outboundTitle = document.createElement('h4');
+                outboundTitle.innerText = 'Outbound';
+                const outboundStats = document.createElement('div');
+                outboundStats.className = 'outbound-stats';
+                inboundStats.appendChild(createStatElement('Packets', ""));
+                inboundStats.appendChild(createStatElement('Data', ""));
+                outboundStats.appendChild(createStatElement('Packets', ""));
+                outboundStats.appendChild(createStatElement('Data', ""));
+
+                inboundDiv.appendChild(inboundTitle);
+                inboundDiv.appendChild(inboundStats);
+                outboundDiv.appendChild(outboundTitle);
+                outboundDiv.appendChild(outboundStats);
+
+                blurContainer.appendChild(mapIdElement);
+                blurContainer.appendChild(uptimeContainer);
+                blurContainer.appendChild(inboundDiv);
+                blurContainer.appendChild(outboundDiv);
+
+                entryDiv.appendChild(blurContainer);
+
+                const disconnectOverlay = document.createElement('div');
+                disconnectOverlay.className = 'disconnect-overlay';
+                disconnectOverlay.innerText = 'DISCONNECT';
+                entryDiv.appendChild(disconnectOverlay);
+
+
+                entryDiv.onmousemove = () => {
+                    const rect = entryDiv.getBoundingClientRect();
+                    const x = event.clientX - rect.left;
+                    const y = event.clientY - rect.top;
+                    const xp = x / rect.width - 0.5;
+                    const yp = y / rect.height - 0.5;
+                    entryDiv.style.transform = `rotateY(${ xp * 15 }deg) rotateX(${ yp * 15 }deg)`;
+                };
+                let disconnect = null
+
+                function blendColors(color1, color2, amount) {
+                    return color1.map((c1, i) => Math.round(c1 + (color2[i] - c1) * amount));
+                }
+
+                function disconnectAnimation() {
+                    if (!disconnect) return;
+                    const now = Date.now();
+                    const delta = now - disconnect;
+                    const easeout = 1 - Math.pow(1 - Math.min(delta / 2000, 1), 3);
+                    entryDiv.style.setProperty('--blur-amount', easeout);
+                    entryDiv.style.translate = `${Math.random() * easeout * 5}px ${Math.random() * easeout * 5}px`;
+                    if (delta > 2000) {
+                        fetch(`/disconnect/${mapId}`, { method: 'POST' });
+                        return;
+                    }
+                    requestAnimationFrame(disconnectAnimation);
+                }
+                entryDiv.onmousedown = () => {
+                    disconnect = Date.now()
+                    requestAnimationFrame(disconnectAnimation)
+                };
+                entryDiv.onmouseup = () => {
+                    entryDiv.style.setProperty('--blur-amount', 0);
+                    disconnect = null;
+                };
+                entryDiv.onmouseleave = () => {
+                    entryDiv.style.transform = `rotateY(0deg) rotateX(0deg)`;
+                };
+                entryDiv.style.setProperty('--blur-amount', 0);
+            }
+
+            const uptime = Math.floor((Date.now() - data.startTime) / 1000);
+
+            entryDiv.querySelector('.uptime .stat span').innerText = formatTime(uptime);
+            entryDiv.querySelector('.inbound-stats .stat[data-title="Packets"] span').innerText = formatBigNumber(data.inbound.packetCount);
+            entryDiv.querySelector('.inbound-stats .stat[data-title="Data"] span').innerText = formatBytes(data.inbound.totalBytes);
+            entryDiv.querySelector('.outbound-stats .stat[data-title="Packets"] span').innerText = formatBigNumber(data.outbound.packetCount);
+            entryDiv.querySelector('.outbound-stats .stat[data-title="Data"] span').innerText = formatBytes(data.outbound.totalBytes);
+        }
+
+        function disableConnection(mapId) {
+            const entryDiv = document.querySelector(`.connection-entry[data-id="${mapId}"]`);
+            if (!entryDiv) return;
+            entryDiv.classList.add('exit');
+            setTimeout(() => {
+                if (entryDiv) {
+                    entryDiv.remove();
+                }
+            }, 500);
+        }
+
+        function getData() {
+            fetch('/stats')
+                .then(response => response.json())
+                .then(data => {
+                    const connectedSet = new Set();
+                    const totalStats = data.totalStats;
+                    document.getElementById('status').innerText = data.connected ? 'ONLINE' : 'DISCONNECTED';
+                    document.body.className = data.connected ? 'online' : 'disconnected';
+                    document.getElementById('uptime').innerText = formatTime(Math.floor((Date.now() - totalStats.startTime) / 1000));
+                    document.getElementById('totalConnections').innerText = formatBigNumber(totalStats.totalConnections);
+                    document.getElementById('activeConnections').innerText = formatBigNumber(data.connectionStats.length);
+                    document.getElementById('totalDataInbound').innerText = formatBytes(totalStats.totalBytesInbound);
+                    document.getElementById('totalDataOutbound').innerText = formatBytes(totalStats.totalBytesOutbound);
+
+                    data.connectionStats.forEach(entry => {
+                        updateConnection(entry.mapId, entry);
+                        connectedSet.add(entry.mapId);
+                    });
+
+                    // Remove entries that are no longer connected
+                    document.querySelectorAll('.connection-entry').forEach(entryDiv => {
+                        const mapId = parseInt(entryDiv.dataset.id);
+                        if (!connectedSet.has(mapId)) {
+                            disableConnection(mapId);
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.log('Error fetching data:', error);
+                    document.getElementById('status').innerText = 'OFFLINE';
+                    document.body.className = 'offline';
+                    connectionsDiv.innerHTML = '';
+                });
+        }
+
+        setInterval(() => {
+            getData();
+        }, 1000);
+        getData();
+    </script>
+</body>
+</html>
