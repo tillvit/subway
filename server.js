@@ -58,11 +58,6 @@ const exposeServer = net.createServer((socket) => {
 
 const remoteServer = net.createServer((socket) => {
     console.log(`Client connected to remote server from ${socket.remoteAddress}:${socket.remotePort}`)
-
-    if (!remoteSocket) {
-        remoteSocket = socket;
-    }
-    let authenticated = false;
     const authTimeout = setTimeout(() => {
         console.log("Client failed to authenticate in time. Disconnecting.")
         socket.destroy()
@@ -80,7 +75,7 @@ const remoteServer = net.createServer((socket) => {
             case MessageType.AUTH: // AUTHENTICATE
                 const receivedToken = buf2hex(packet.authToken)
                 if (receivedToken === process.env.AUTH_TOKEN) {
-                    authenticated = true;
+                    remoteSocket = socket;
                     clearTimeout(authTimeout);
                     console.log("Client authenticated successfully.");
                 } else {
@@ -90,7 +85,7 @@ const remoteServer = net.createServer((socket) => {
                 break
 
             case MessageType.DATA: // DATA
-                if (!authenticated) {
+                if (socket !== remoteSocket) {
                     console.warn("Received data before authentication. Ignoring.");
                     socket.destroy();
                 }
@@ -99,7 +94,7 @@ const remoteServer = net.createServer((socket) => {
                 break;
 
             case MessageType.CLOSE_CONNECTION: // CLOSE_CONNECTION
-                if (!authenticated) {
+                if (socket !== remoteSocket) {
                     console.warn("Received data before authentication. Ignoring.")
                     socket.destroy()
                 }
