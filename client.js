@@ -27,6 +27,7 @@ class ReconnectingSocket extends net.Socket {
 
     constructor(options) {
         super(options);
+        super.setKeepAlive(true, 5000)
         this.retryInterval = options?.retryInterval || this.retryInterval;
         this.onDisconnect = options?.onDisconnect || null;
     }
@@ -39,27 +40,21 @@ class ReconnectingSocket extends net.Socket {
         let timeout = null;
         console.log(`Attempting to connect to ${host}:${port}...`);
         super.connect(port, host, handler);
-        super.on('error', (err) => {
-            console.error(`Connection error: ${err.message}`);
-            this.onDisconnect?.()
-            clearTimeout(timeout);
-            this.removeAllListeners();
-            timeout = setTimeout(() => this._connect(port, host, handler), this.retryInterval);
-            this.connected = false;
-        })
         super.on('connect', () => {
             clearTimeout(timeout);
             console.log(`Successfully connected to ${host}:${port}`);
             this.connected = true;
         });
-        super.on('close', () => {
-            console.log(`Connection ended by server.`);
-            this.onDisconnect?.()
-            clearTimeout(timeout);
-            this.removeAllListeners();
-            timeout = setTimeout(() => this._connect(port, host, handler), this.retryInterval);
-            this.connected = false;
-        });
+        for (const listener of ["close", "end", "disconnect", "error"]) {
+            super.on(listener, () => {
+                console.log(`Connection ${listener} by server.`);
+                this.onDisconnect?.()
+                clearTimeout(timeout);
+                this.removeAllListeners();
+                timeout = setTimeout(() => this._connect(port, host, handler), this.retryInterval);
+                this.connected = false;
+            })
+        }
     }
 }
 

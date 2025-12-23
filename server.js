@@ -20,6 +20,7 @@ const exposeServer = net.createServer((socket) => {
         socket.destroy()
         return
     }
+    socket.setKeepAlive(true, 5000)
     console.log(`Client connected to expose server from ${socket.remoteAddress}:${socket.remotePort}`)
     const mapId = connectionMap.assign(socket)
 
@@ -57,6 +58,7 @@ const exposeServer = net.createServer((socket) => {
 
 
 const remoteServer = net.createServer((socket) => {
+    socket.setKeepAlive(true, 5000)
     console.log(`Client connected to remote server from ${socket.remoteAddress}:${socket.remotePort}`)
     const authTimeout = setTimeout(() => {
         console.log("Client failed to authenticate in time. Disconnecting.")
