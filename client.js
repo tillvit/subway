@@ -24,22 +24,32 @@ class ReconnectingSocket extends net.Socket {
     retryInterval = 5000; // 5 seconds
     onDisconnect = null;
     connected = false;
+    listenerMap;
 
     constructor(options) {
         super(options);
-        super.setKeepAlive(true, 5000)
         this.retryInterval = options?.retryInterval || this.retryInterval;
         this.onDisconnect = options?.onDisconnect || null;
     }
 
-    connect(port, host, handler) {
-        this._connect(port, host, handler);
+    on(event, handler) {
+        if (!this.listenerMap) this.listenerMap = new Map();
+        if (!this.listenerMap.has(event)) this.listenerMap.set(event, []);
+        this.listenerMap.get(event).push(handler);
+        super.on(event, handler)
     }
 
-    _connect(port, host, handler) {
+    connect(port, host, handler) {
+        this.on("connect", handler)
+        this._connect(port, host);
+    }
+
+    _connect(port, host) {
+        this.removeAllListeners();
+        super.setKeepAlive(true, 5000);
         let timeout = null;
         console.log(`Attempting to connect to ${host}:${port}...`);
-        super.connect(port, host, handler);
+        super.connect(port, host);
         super.on('connect', () => {
             clearTimeout(timeout);
             console.log(`Successfully connected to ${host}:${port}`);
@@ -50,10 +60,14 @@ class ReconnectingSocket extends net.Socket {
                 console.log(`Connection ${listener} by server.`);
                 this.onDisconnect?.()
                 clearTimeout(timeout);
-                this.removeAllListeners();
-                timeout = setTimeout(() => this._connect(port, host, handler), this.retryInterval);
+                timeout = setTimeout(() => this._connect(port, host), this.retryInterval);
                 this.connected = false;
             })
+        }
+        for (const [event, listeners] of this.listenerMap.entries()) {
+            for (const listener of listeners) {
+                super.on(event, listener);
+            }
         }
     }
 }
@@ -91,6 +105,7 @@ remoteClient.connect(REMOTE_PORT, process.env.REMOTE_HOST, () => {
 remoteClient.on("data", (data) => {
     void parser.push(data)
 })
+
 
 function onPacket(packet) {
     if (DEBUG) console.log(packet)
@@ -164,17 +179,17 @@ function onPacket(packet) {
             connectionTransferData.delete(packet.mapId);
             break;
         }
+        case MessageType.AUTH_OK: {
+            console.log("Authentication OK")
+            break
+        }
     }
 }
 
 // if (DEBUG) {
 // setInterval(() => {
-    // console.log(parser.buffer.length)
-    // console.log(parser.buffer.read(parser.buffer.length))
-    // for (const [mapId, data] of connectionTransferData.entries()) {
-    //     const elapsedTime = (Date.now() - data.startTime) / 1000; // in seconds
-    //     console.log(`MapId ${mapId} - Local: ${data.local.totalBytes} bytes in ${data.local.packetCount} packets | Remote: ${data.remote.totalBytes} bytes in ${data.remote.packetCount} packets | Elapsed Time: ${elapsedTime.toFixed(2)}s`);
-    // }
+//     console.log(parser.buffer.length)
+//     console.log(parser.buffer.read(parser.buffer.length))
 // }, 1000)
 // }
 

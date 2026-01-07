@@ -31,15 +31,19 @@ const exposeServer = net.createServer((socket) => {
 
     socket.on("close", () => {
         connectionMap.close(mapId)
+        console.log(`Expose client disconnected for mapId ${mapId}`)
+        if (!remoteSocket)
+          console.warn("Couldn't write data to remote socket!")
         remoteSocket?.write(serialize({
             type: MessageType.CLOSE_CONNECTION,
             mapId: mapId
         }))
-        console.log(`Expose client disconnected for mapId ${mapId}`)
     })
 
     socket.on("data", (data) => {
         console.log(`Received from client: `, data)
+        if (!remoteSocket)
+          console.warn("Couldn't write data to remote socket!")
         remoteSocket?.write(serialize({
             type: MessageType.DATA,
             mapId: mapId,
@@ -48,6 +52,8 @@ const exposeServer = net.createServer((socket) => {
     })
     socket.on("error", (err) => {
         console.error("Expose socket error:", err)
+        if (!remoteSocket)
+          console.warn("Couldn't write data to remote socket!")
         connectionMap.close(mapId)
         remoteSocket?.write(serialize({
             type: MessageType.CLOSE_CONNECTION,
@@ -80,6 +86,7 @@ const remoteServer = net.createServer((socket) => {
                     remoteSocket = socket;
                     clearTimeout(authTimeout);
                     console.log("Client authenticated successfully.");
+                    remoteSocket.write(serialize({type: MessageType.AUTH_OK}))
                 } else {
                     console.warn("Client failed to authenticate. Disconnecting.");
                     socket.destroy();

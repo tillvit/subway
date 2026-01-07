@@ -3,6 +3,7 @@ export const MessageType = {
     CREATE_CONNECTION: 1,
     CLOSE_CONNECTION: 2,
     DATA: 3,
+    AUTH_OK: 4,
 }
 
 const writeULEB128 = (value) => {
@@ -185,6 +186,11 @@ export class ConnectionHandler {
                     this.buffer.removeStart(3 + lengthBytes + length)
                     break
                 }
+                case MessageType.AUTH_OK: {
+                    this.buffer.removeStart(1)
+                    this.onPacket({type: MessageType.AUTH_OK})
+                    break
+                }
             }
         }
     }
@@ -206,6 +212,9 @@ export function serialize(message) {
             const header = Buffer.from([MessageType.DATA, (message.mapId >> 8) & 0xFF, message.mapId & 0xFF])
             const length = writeULEB128(message.payload.byteLength)
             return Buffer.concat([header, length, Buffer.from(message.payload)])
+        }
+        case MessageType.AUTH_OK: {
+            return Buffer.from([4])
         }
     }
 }
