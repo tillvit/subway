@@ -172,7 +172,7 @@ const remoteServer = net.createServer((socket) => {
         switch (packet.type) {
             case MessageType.AUTH: // AUTHENTICATE
                 const receivedToken = buf2hex(packet.authToken)
-                if (receivedToken === process.env.AUTH_TOKEN) {
+                if (receivedToken === config.auth_token) {
                     remoteSocket = socket;
                     clearTimeout(authTimeout);
                     console.log("Client authenticated successfully.");
@@ -229,9 +229,9 @@ const remoteServer = net.createServer((socket) => {
     })
 })
 
-exposeServer.listen(EXPOSE_PORT, () => {
-    console.log(`Expose server listening on port ${EXPOSE_PORT}`)
+exposeServer.listen(config.expose_port, () => {
+    console.log(`Expose server listening on port ${config.expose_port}`)
 })
-remoteServer.listen(REMOTE_PORT, () => {
-    console.log(`Remote server listening on port ${REMOTE_PORT}`)
+remoteServer.listen(config.remote_port, () => {
+    console.log(`Remote server listening on port ${config.remote_port}`)
 })
