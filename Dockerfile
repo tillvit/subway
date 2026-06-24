@@ -7,4 +7,4 @@ COPY package*.json ./
 RUN npm i
 COPY . .
 
-CMD ["npm", "run", "server"]
+CMD ["node", "server.js", "/app/config.json"]

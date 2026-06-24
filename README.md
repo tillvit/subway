@@ -17,6 +17,8 @@ Create a `config.json` file specifying the following fields:
 
 Then, run ``node server.js config.json`` to start the server. You can override the options defined in the config by viewing the CLI options.
 
+Alternatively, if your config is located at `config.json`, you can run `docker compose up` to run the server as a Docker container.
+
 
 ## Running the client
 
