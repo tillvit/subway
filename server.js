@@ -1,4 +1,5 @@
 import { ArgumentParser } from "argparse";
+import { readFileSync } from "fs";
 import net from "net";
 import { ConnectionHandler, ConnectionMap, MessageType, serialize } from "./protocol.js";
 
