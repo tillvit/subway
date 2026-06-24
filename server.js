@@ -1,3 +1,4 @@
+import { ArgumentParser } from "argparse";
 import net from "net";
 import { ConnectionHandler, ConnectionMap, MessageType, serialize } from "./protocol.js";
 
@@ -5,7 +6,7 @@ const EXPOSE_PORT = 8199
 const REMOTE_PORT = 8198
 
 const argparse = new ArgumentParser({
-    description: 'Subway Surfer'
+    description: 'Subway Server'
 });
 
 argparse.add_argument('-c', '--config', { help: 'Path to the configuration file' });
