@@ -9,10 +9,10 @@ const argparse = new ArgumentParser({
     description: 'Subway Server'
 });
 
-argparse.add_argument('-c', '--config', { help: 'Path to the configuration file' });
 argparse.add_argument('-e', '--exposeport', { help: 'Port to expose', type: 'int' });
 argparse.add_argument('-p', '--remoteport', { help: 'The designated remote port', type: 'int' });
 argparse.add_argument('-d', '--debug', { help: 'Enable debug mode', action: 'store_true' });
+argparse.add_argument('config', { help: 'Path to the configuration file' });
 
 const args = argparse.parse_args();
 
@@ -89,6 +89,9 @@ if (!/^[0-9a-fA-F]+$/.test(config.auth_token) && config.auth_token.length != 32)
     console.error(`Invalid auth_token format. It should be a hexadecimal string of length 32 (16 bytes).`)
     process.exit(1)
 }
+
+console.log(`Tunnel: REMOTE localhost:${config.remote_port} <-> EXPOSE localhost:${config.expose_port}`)
+
 
 let remoteSocket = null
 

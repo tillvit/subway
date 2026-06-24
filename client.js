@@ -8,13 +8,13 @@ const argparse = new ArgumentParser({
     description: 'Subway Surfer'
 });
 
-argparse.add_argument('-c', '--config', { help: 'Path to the configuration file' });
 argparse.add_argument('-r', '--remotehost', { help: 'Remote host to connect to' });
 argparse.add_argument('-p', '--remoteport', { help: 'Remote port to connect to', type: 'int' });
 argparse.add_argument('-P', '--localport', { help: 'Port of the local service', type: 'int' });
 argparse.add_argument('-a', '--authtoken', { help: 'Authentication token for the remote service' });
 argparse.add_argument('-w', '--webport', { help: 'Port for the web server', type: 'int', default: 6060 });
 argparse.add_argument('-d', '--debug', { help: 'Enable debug mode', action: 'store_true' });
+argparse.add_argument('config', { help: 'Path to the configuration file' });
 
 const args = argparse.parse_args();
 
@@ -71,8 +71,6 @@ if (args.authtoken) config.auth_token = args.authtoken
 if (args.webport) config.webport = args.webport
 if (args.debug) config.debug = args.debug
 if (args.localport) config.local_port = args.localport
-
-console.log(config)
 
 for (const { key, type } of spec) {
     if (!(key in config)) {
@@ -156,6 +154,8 @@ class ReconnectingSocket extends net.Socket {
         }
     }
 }
+
+console.log(`Tunnel: localhost:${config.local_port} <-> ${config.remote_host}:${config.remote_port}`)
 
 const connectionMap = new ConnectionMap();
 const connectionTransferData = new Map();
