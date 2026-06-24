@@ -163,10 +163,12 @@ const remoteServer = net.createServer((socket) => {
 
     const parser = new ConnectionHandler(onPacket)
 
-    const parserDebugInterval = setInterval(() => {
-        console.log(parser.buffer.length)
-        console.log(parser.buffer.read(parser.buffer.length))
-    }, 1000);
+    if (config.debug) {
+        const parserDebugInterval = setInterval(() => {
+            console.log(parser.buffer.length)
+            console.log(parser.buffer.read(parser.buffer.length))
+        }, 1000);
+    }
 
     function onPacket(packet) {
         switch (packet.type) {
