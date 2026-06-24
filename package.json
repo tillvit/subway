@@ -5,6 +5,7 @@
     "client": "node --env-file=.env client.js"
   },
   "dependencies": {
+    "argparse": "^2.0.1",
     "express": "^5.2.1"
   }
 }

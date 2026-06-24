@@ -1,24 +1,109 @@
+import { ArgumentParser } from 'argparse';
 import express from "express";
+import { readFileSync } from "node:fs";
 import net from "node:net";
 import { ConnectionHandler, ConnectionMap, MessageType, serialize } from "./protocol.js";
 
-const REMOTE_PORT = 8198
-const WEBSITE_PORT = 6060
-const DEBUG = process.env.DEBUG === "true";
+const argparse = new ArgumentParser({
+    description: 'Subway Surfer'
+});
 
-let port;
+argparse.add_argument('-c', '--config', { help: 'Path to the configuration file' });
+argparse.add_argument('-r', '--remotehost', { help: 'Remote host to connect to' });
+argparse.add_argument('-p', '--remoteport', { help: 'Remote port to connect to', type: 'int' });
+argparse.add_argument('-P', '--localport', { help: 'Port of the local service', type: 'int' });
+argparse.add_argument('-a', '--authtoken', { help: 'Authentication token for the remote service' });
+argparse.add_argument('-w', '--webport', { help: 'Port for the web server', type: 'int', default: 6060 });
+argparse.add_argument('-d', '--debug', { help: 'Enable debug mode', action: 'store_true' });
 
-try {
-    port = parseInt(process.argv[2])
-} catch (e) {
-    console.error(`Usage: node client.js <port>`)
+const args = argparse.parse_args();
+
+let config = {
+    webport: 6060,
+    debug: false,
+}
+const spec = [
+    { key: 'remote_host', type: 'string' },
+    { key: 'remote_port', type: 'int' },
+    { key: 'auth_token', type: 'string' },
+    { key: 'local_port', type: 'int' },
+    { key: 'webport', type: 'int' },
+    { key: 'debug', type: 'boolean' },
+]
+
+if (args.config) {
+    try {
+        const parsed = JSON.parse(readFileSync(args.config, 'utf-8'))
+
+        for (const { key, type } of spec) {
+            if (key in parsed) {
+                const value = parsed[key];
+                switch (type) {
+                    case 'string':
+                        if (typeof value !== 'string') {
+                            throw new Error(`Expected ${key} to be a string`)
+                        }
+                        break;
+                    case 'int':
+                        if (typeof value !== 'number' || !Number.isInteger(value)) {
+                            throw new Error(`Expected ${key} to be an integer`)
+                        }
+                        break;
+                    case 'boolean':
+                        if (typeof value !== 'boolean') {
+                            throw new Error(`Expected ${key} to be a boolean`)
+                        }
+                        break;
+                    default:
+                        throw new Error(`Unknown type for key ${key}: ${type}`)
+                }
+                config[key] = value
+            }
+        }
+    } catch (e) {
+        console.error(`Error parsing config file: ${e.message}`)
+        process.exit(1)
+    }
+}
+if (args.remotehost) config.remote_host = args.remotehost
+if (args.remoteport) config.remote_port = args.remoteport
+if (args.authtoken) config.auth_token = args.authtoken
+if (args.webport) config.webport = args.webport
+if (args.debug) config.debug = args.debug
+if (args.localport) config.local_port = args.localport
+
+console.log(config)
+
+for (const { key, type } of spec) {
+    if (!(key in config)) {
+        console.error(`Missing required configuration key: ${key}`)
+        process.exit(1)
+    }
+}
+
+// check if local_port is a valid port number
+if (config.local_port < 1 || config.local_port > 65535) {
+    console.error(`Invalid local_port: ${config.local_port}. It should be between 1 and 65535.`)
     process.exit(1)
 }
-if (isNaN(port)) {
-    console.error(`Usage: node client.js <port>`)
+
+// check if remote_port is a valid port number
+if (config.remote_port < 1 || config.remote_port > 65535) {
+    console.error(`Invalid remote_port: ${config.remote_port}. It should be between 1 and 65535.`)
     process.exit(1)
 }
 
+// check if webport is a valid port number
+if (config.webport < 1 || config.webport > 65535) {
+    console.error(`Invalid webport: ${config.webport}. It should be between 1 and 65535.`)
+    process.exit(1)
+}
+
+// check format of auth_token
+if (!/^[0-9a-fA-F]+$/.test(config.auth_token) && config.auth_token.length != 32) {
+    console.error(`Invalid auth_token format. It should be a hexadecimal string of length 32 (16 bytes).`)
+    process.exit(1)
+}
 
 class ReconnectingSocket extends net.Socket {
     retryInterval = 5000; // 5 seconds
@@ -26,7 +111,7 @@ class ReconnectingSocket extends net.Socket {
     connected = false;
     listenerMap;
 
-    constructor(options) {
+    constructor (options) {
         super(options);
         this.retryInterval = options?.retryInterval || this.retryInterval;
         this.onDisconnect = options?.onDisconnect || null;
@@ -74,7 +159,7 @@ class ReconnectingSocket extends net.Socket {
 
 const connectionMap = new ConnectionMap();
 const connectionTransferData = new Map();
-const totalStats = {
+let totalStats = {
     startTime: Date.now(),
     totalConnections: 0,
     totalBytesInbound: 0,
@@ -88,13 +173,18 @@ const remoteClient = new ReconnectingSocket({
     }
 });
 
-remoteClient.connect(REMOTE_PORT, process.env.REMOTE_HOST, () => {
-    console.log(`Connected to server at ${process.env.REMOTE_HOST}:${REMOTE_PORT}`);
+remoteClient.connect(config.remote_port, config.remote_host, () => {
+    console.log(`Connected to server at ${config.remote_host}:${config.remote_port}`);
     connectionMap.clear();
-    totalStats.startTime = Date.now();
+    totalStats = {
+        startTime: Date.now(),
+        totalConnections: 0,
+        totalBytesInbound: 0,
+        totalBytesOutbound: 0,
+    }
 
     // Send authentication token
-    const authBuffer = Buffer.from(process.env.AUTH_TOKEN, 'hex');
+    const authBuffer = Buffer.from(config.auth_token, 'hex');
     const authPacket = serialize({
         type: MessageType.AUTH,
         authToken: authBuffer
@@ -108,16 +198,16 @@ remoteClient.on("data", (data) => {
 
 
 function onPacket(packet) {
-    if (DEBUG) console.log(packet)
+    if (config.debug) console.log(packet)
     switch (packet.type) {
         case MessageType.CREATE_CONNECTION: {
             const clientSocket = new net.Socket();
             totalStats.totalConnections += 1;
-            clientSocket.connect(port, 'localhost', () => {
-                console.log(`Connected to local service on port ${port} for mapId ${packet.mapId}`);
+            clientSocket.connect(config.local_port, 'localhost', () => {
+                console.log(`Connected to local service on port ${config.local_port} for mapId ${packet.mapId}`);
             });
             clientSocket.on('data', (chunk) => {
-                if (DEBUG) console.log("Local data", chunk)
+                if (config.debug) console.log("Local data", chunk)
                 connectionTransferData.get(packet.mapId).outbound.packetCount += 1;
                 connectionTransferData.get(packet.mapId).outbound.totalBytes += chunk.length;
                 totalStats.totalBytesOutbound += chunk.length;
@@ -186,7 +276,7 @@ function onPacket(packet) {
     }
 }
 
-// if (DEBUG) {
+// if (config.debug) {
 // setInterval(() => {
 //     console.log(parser.buffer.length)
 //     console.log(parser.buffer.read(parser.buffer.length))
@@ -226,6 +316,6 @@ app.post('/disconnect/:mapId', (req, res) => {
     res.status(200).send('Disconnected');
 })
 
-app.listen(WEBSITE_PORT, () => {
-  console.log(`Web server listening on port ${WEBSITE_PORT}`)
+app.listen(config.webport, () => {
+    console.log(`Web server listening on port ${config.webport}`)
 })
